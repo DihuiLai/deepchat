@@ -1,2 +1,52 @@
 uploads/
+package-lock.json
+package.json
+
+# Node.js dependencies
 node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+dist/
+build/
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Dependency lock files (if you don't want to track them)
+# Uncomment if needed
+# package-lock.json
+# yarn.lock
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Editor-specific files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Test coverage
+coverage/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+
+# Production-specific
+pm2.json
