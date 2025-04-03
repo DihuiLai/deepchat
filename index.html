@@ -16,9 +16,9 @@
             margin-bottom: 20px;
         }
         .logo h1 {
-            font-family: Arial, sans-serif; /* Fallback to Arial */
+            font-family: Arial, sans-serif;
             font-size: 40px;
-            font-weight: 900; /* Extra bold for a tech feel */
+            font-weight: 900;
             letter-spacing: 3px;
             background: linear-gradient(135deg, #1976d2, #42a5f5, #1976d2);
             -webkit-background-clip: text;
@@ -136,6 +136,7 @@
             messageDiv.innerHTML = formatResponse(content);
             chatMessages.appendChild(messageDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageDiv; // Return for streaming updates
         }
 
         function isJsonString(str) {
@@ -166,14 +167,29 @@
                 if (message) formData.append('message', message);
                 if (file) formData.append('file', file);
 
-                const response = await fetch('http://localhost:3000/grok', {
+                const response = await fetch('/grok', {
                     method: 'POST',
                     body: formData,
                 });
 
                 if (!response.ok) throw new Error('API request failed');
-                const data = await response.json();
-                return data.response || 'No response from API';
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let result = '';
+                const messageDiv = addMessage('', false); // Create empty message for streaming
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    result += chunk;
+                    messageDiv.innerHTML = formatResponse(result); // Update UI incrementally
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+
+                return result; // Final result (optional, not used here)
             } catch (error) {
                 console.error('Error:', error);
                 return 'Sorry, something went wrong! Is the backend running?';
@@ -195,8 +211,7 @@
             userInput.value = '';
             fileInput.value = '';
 
-            const grokResponse = await callApi(message, file);
-            addMessage(grokResponse);
+            await callApi(message, file); // Stream response
         });
 
         userInput.addEventListener('keypress', (e) => {

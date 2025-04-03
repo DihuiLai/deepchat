@@ -8,7 +8,7 @@ const port = 3000;
 
 // Middleware
 app.use(cors());
-app.use(express.static(__dirname)); // Serve static files from the root directory
+app.use(express.static(__dirname));
 
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, 'uploads');
@@ -44,24 +44,35 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// POST endpoint for chat and file upload
+// POST endpoint for chat and file upload with streaming
 app.post('/grok', upload.single('file'), (req, res) => {
     console.log('Request received:', req.body, req.file);
 
     const message = req.body ? req.body.message : undefined;
     const file = req.file;
 
-    setTimeout(() => {
-        let response = dummyResponses[Math.floor(Math.random() * dummyResponses.length)];
+    // Set headers for streaming
+    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader('Transfer-Encoding', 'chunked');
 
-        if (file) {
-            response = `Received file: **${file.originalname}** (Type: ${file.mimetype}, Size: ${file.size} bytes)`;
-        } else if (!message) {
-            response = "Please send a message or upload a file!";
+    let response = dummyResponses[Math.floor(Math.random() * dummyResponses.length)];
+    if (file) {
+        response = `Received file: **${file.originalname}** (Type: ${file.mimetype}, Size: ${file.size} bytes)`;
+    } else if (!message) {
+        response = "Please send a message or upload a file!";
+    }
+
+    // Stream the response character by character
+    let index = 0;
+    const streamInterval = setInterval(() => {
+        if (index < response.length) {
+            res.write(response[index]);
+            index++;
+        } else {
+            clearInterval(streamInterval);
+            res.end(); // End the stream
         }
-
-        res.json({ response });
-    }, 1000);
+    }, 5); // 50ms delay per character
 });
 
 // Start server
