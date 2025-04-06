@@ -44,7 +44,7 @@ async def stream_openai_response(message: str, model: str, temperature: float):
         stream = client.chat.completions.create(
             model="deepseek-r1",  # 此处以 deepseek-r1 为例，可按需更换模型名称
             messages=[
-                {"role": "user", "content": "9.9和9.11谁大"}
+                {"role": "user", "content": message}
             ],
             stream=True,
             # 解除以下注释会在最后一个chunk返回Token使用量
