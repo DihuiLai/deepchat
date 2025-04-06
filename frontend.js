@@ -15,14 +15,18 @@ async function addMessage(content, isUser = false) {
 }
 
 
-async function convert2markdown(message){
+async function convert2markdown(message, file=null){
     // Send to backend for markdown conversion
     console.log('convert2markdown message:')
     console.log(message)
+    const formData = new FormData();
+    if (message) formData.append('text', message);
+    if (file) formData.append('file', file);
+    console.log(formData)
+
     const response = await fetch('/convert-markdown', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: message })
+        body: formData
     });
     const userData = await response.json();
     return userData

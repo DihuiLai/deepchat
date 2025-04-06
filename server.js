@@ -5,9 +5,11 @@ const fs = require('fs');
 const path = require('path');
 const marked = require('marked');
 const axios = require('axios');
+const markdownIt = require('markdown-it');
 const app = express();
 const port = 3000;
-
+// Initialize markdown-it
+const md = new markdownIt();
 
 // Enable CORS
 app.use(cors({
@@ -160,7 +162,93 @@ app.post('/call_llm', upload.single('file'), async (req, res) => {
     }
 });
 
-app.post('/convert-markdown', (req, res) => {
+
+// Function to check if string is valid JSON
+function isValidJson(str) {
+    try {
+        JSON.parse(str);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+// Function to convert JSON to pretty HTML
+function jsonToPrettyHtml(jsonStr) {
+    const jsonObj = JSON.parse(jsonStr);
+    const prettyJson = JSON.stringify(jsonObj, null, 2);
+    
+    return `
+        <pre style="background: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto;">
+            <code style="font-family: monospace; white-space: pre-wrap;">
+${prettyJson}
+            </code>
+        </pre>
+    `;
+}
+
+// Main processing function
+function processText(inputText) {
+    // Split text into lines
+    const lines = inputText.split('\n');
+    let result = '';
+    let jsonBuffer = '';
+    let isJsonBlock = false;
+
+    for (const line of lines) {
+        const trimmedLine = line.trim();
+
+        // Check if line could be start of JSON
+        if (trimmedLine.startsWith('{') || trimmedLine.startsWith('[')) {
+            isJsonBlock = true;
+            jsonBuffer = trimmedLine;
+            continue;
+        }
+
+        if (isJsonBlock) {
+            jsonBuffer += '\n' + line;
+
+            // Check if JSON block might be ending
+            if ((trimmedLine.endsWith('}') || trimmedLine.endsWith(']')) && isValidJson(jsonBuffer)) {
+                result += jsonToPrettyHtml(jsonBuffer);
+                isJsonBlock = false;
+                jsonBuffer = '';
+            }
+        } else if (trimmedLine) {
+            // Process as Markdown
+            result += md.render(trimmedLine) + '\n';
+        }
+    }
+
+    // Handle case where JSON wasn't properly closed
+    if (jsonBuffer && !isValidJson(jsonBuffer)) {
+        result += md.render(jsonBuffer);
+    }
+
+    return result;
+}
+
+// API endpoint
+app.post('/process-text', upload.single('file'), async (req, res) => {
+    const text = req.body ? req.body.text : undefined;
+    const file = req.file;
+
+
+    if (!text) {
+        console.log('text received', text)
+        return res.status(400).json({ error: 'Text is required' });
+    }
+
+    try {
+        const processedHtml = processText(text);
+        //console.log('html', processedHtml)
+        res.json({ html: processedHtml, raw:text});
+    } catch (error) {
+        res.status(500).json({ error: 'Error processing text', details: error.message });
+    }
+});
+
+app.post('/convert-markdown', upload.single('file'), async (req, res) => {
     const { text } = req.body;
     if (!text) {
         return res.status(400).json({ error: 'No text provided' });

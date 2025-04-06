@@ -92,7 +92,7 @@ async def stream_agent_response(message: str, model: str, temperature: float):
             if isinstance(i, dict) and 'final' in i:
                 print("\n" + "=" * 20 + "完整回复" + "=" * 20 + "\n")
                 print('final answer:', i['final']['answer'])
-                yield "\n\n" + "=" * 20 + "最终回复" + "=" * 20 + "\n\n"+json.dumps(i, ensure_ascii=False)
+                yield "\n\n" + "=" * 20 + "最终回复" + "=" * 20 + "\n\n"+i['final']['answer']
             else:
                 print(i)
                 yield i
