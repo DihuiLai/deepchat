@@ -4,11 +4,18 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const marked = require('marked');
+const axios = require('axios');
 const app = express();
 const port = 3000;
 
-// Middleware
-app.use(cors());
+
+// Enable CORS
+app.use(cors({
+    origin: '*', // In production, specify your frontend URL
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type']
+}));
+
 app.use(express.static(__dirname));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -58,7 +65,7 @@ app.get('/', (req, res) => {
 app.post('/grok', upload.single('file'), (req, res) => {
     console.log('Request received:', req.body, req.file);
 
-    const message = req.body ? req.body.message : undefined;
+    const message = req.body ? req.body.text : undefined;
     const file = req.file;
 
     // Set headers for streaming
@@ -83,6 +90,74 @@ app.post('/grok', upload.single('file'), (req, res) => {
             res.end(); // End the stream
         }
     }, 5); // 50ms delay per character
+});
+
+// API endpoint to call FastAPI and stream the response
+app.post('/call_llm', upload.single('file'), async (req, res) => {
+    console.log('Request received:', req.body, req.file);
+
+    const message = req.body ? req.body.message : undefined;
+    const file = req.file;
+    console.log('message received', message)
+    // Set headers for streaming
+    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader('Transfer-Encoding', 'chunked');
+
+    if (!message || !message.trim()) {
+        return res.status(400).json({ error: 'Message is required' });
+    }
+    try {
+        const fastApiResponse = await axios({
+            method: 'post',
+            url: 'http://localhost:8000/chat/stream',
+            data: {
+                message: message,
+                model: 'gpt-3.5-turbo',
+                temperature: 0.7
+            },
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            responseType: 'stream' // Enable streaming response
+        });
+
+        // Set headers for streaming response
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
+        // Pipe the Axios stream to the client
+        fastApiResponse.data.on('data', (chunk) => {
+            const content = chunk.toString();
+            res.write(content);
+        });
+
+        fastApiResponse.data.on('end', () => {
+            res.write('[Stream complete]');
+            res.end();
+        });
+
+        fastApiResponse.data.on('error', (error) => {
+            if (!res.headersSent) {
+                res.status(500).write(`Error: ${error.message}`);
+            } else {
+                res.write(`Error: ${error.message}`);
+            }
+            res.end();
+        });
+
+        // Handle client disconnect
+        req.on('close', () => {
+            fastApiResponse.data.destroy(); // Close the stream
+        });
+    } catch (error) {
+        if (!res.headersSent) {
+            res.status(500).json({ error: error.message });
+        } else {
+            res.write(`Error: ${error.message}`);
+            res.end();
+        }
+    }
 });
 
 app.post('/convert-markdown', (req, res) => {

@@ -28,15 +28,18 @@ async function convert2markdown(message){
     return userData
 }
 
+
 async function callApi(message, file = null) {
     try {
         const formData = new FormData();
         if (message) formData.append('message', message);
         if (file) formData.append('file', file);
+        console.log(formData)
 
-        const response = await fetch('/grok', {
+        const response = await fetch('/call_llm', {
             method: 'POST',
             body: formData,
+            //body: JSON.stringify({ text: message })
         });
 
         if (!response.ok) throw new Error('API request failed');
@@ -69,7 +72,7 @@ async function callApi(message, file = null) {
 sendBtn.addEventListener('click', async () => {
     const message = userInput.value.trim();
     const file = fileInput.files[0];
-
+    console.log(message)
     if (!message && !file) return;
 
     if (message) {
