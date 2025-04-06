@@ -38,9 +38,7 @@ class ConversationAgent:
             # 创建聊天完成请求
             stream = client.chat.completions.create(
                 model="deepseek-r1",  # 此处以 deepseek-r1 为例，可按需更换模型名称
-                messages=[
-                    {"role": "user", "content": message}
-                ],
+                messages=self.messages,
                 stream=True,
                 # 解除以下注释会在最后一个chunk返回Token使用量
                 # stream_options={
@@ -58,25 +56,24 @@ class ConversationAgent:
                     delta = chunk.choices[0].delta
                     # 打印思考过程
                     if hasattr(delta, 'reasoning_content') and delta.reasoning_content != None:
-                        print(delta.reasoning_content, end='', flush=True)
+                        #print(delta.reasoning_content, end='', flush=True)
                         reasoning_content += delta.reasoning_content
                         yield delta.reasoning_content
                     else:
                         # 开始回复
                         if delta.content != "" and is_answering == False:
-                            print("\n" + "=" * 20 + "完整回复" + "=" * 20 + "\n")
                             is_answering = True
                         # 打印回复过程
-                        print(delta.content, end='', flush=True)
+                        #print(delta.content, end='', flush=True)
                         answer_content += delta.content
                         yield delta.content
 
 
             # Get the AI's response
-            ai_response = {'answer': answer_content, 'reasoning':reasoning_content}
+            ai_response ={'final': {'answer': answer_content, 'reasoning':reasoning_content}}
             
             # Add AI's response to conversation history
-            self.add_message("assistant", ai_response)
+            self.add_message("assistant", answer_content)
             
             yield ai_response
 
@@ -87,31 +84,18 @@ class ConversationAgent:
         """Reset the conversation history, keeping only the system prompt"""
         self.messages = [self.messages[0]]
 
-def main():
-    # Create an instance of the conversation agent
-
-    while True:
-        # Get user input
-        user_input = input("\nYou: ")
-        
-        # Check for exit or clear commands
-        if user_input.lower() == 'quit':
-            print("Goodbye!")
-            break
-        elif user_input.lower() == 'clear':
-            agent.clear_conversation()
-            print("Conversation cleared!")
-            continue
-        
-        # Get and display AI response
-        response = agent.get_response(user_input)
-        for i in respongit 
-        print(f"AI: {response}")
 
 if __name__ == "__main__":
     # Make sure you have your OPENAI_API_KEY set in your environment
     # You can set it in terminal: export OPENAI_API_KEY='your-api-key-here'
     agent = ConversationAgent()
+    stremresonse = agent.get_response("法国的首都是哪里？")
+    for i in stremresonse:
+        if isinstance(i, dict) and 'final' in i:
+            print("\n" + "=" * 20 + "完整回复" + "=" * 20 + "\n")
+            print('final answer:', i['final']['answer'])
+        else:
+            print(i)
     
     print("Welcome! I'm your AI assistant. Type 'quit' to exit or 'clear' to reset the conversation.")
     

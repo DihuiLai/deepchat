@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 import asyncio
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-
+from agents.conversationagent import ConversationAgent
+import json 
 app = FastAPI()
 
 app.add_middleware(
@@ -78,6 +79,28 @@ async def stream_openai_response(message: str, model: str, temperature: float):
     except Exception as e:
         yield f"Error: {str(e)}"
 
+
+async def stream_agent_response(message: str, model: str, temperature: float):
+    """
+    Generator function to stream OpenAI chat completion responses
+    """
+
+    try:
+        agent = ConversationAgent()
+        streamrespfromagent = agent.get_response(message)
+        for i in streamrespfromagent:
+            if isinstance(i, dict) and 'final' in i:
+                print("\n" + "=" * 20 + "完整回复" + "=" * 20 + "\n")
+                print('final answer:', i['final']['answer'])
+                yield "\n\n" + "=" * 20 + "最终回复" + "=" * 20 + "\n\n"+json.dumps(i, ensure_ascii=False)
+            else:
+                print(i)
+                yield i
+    except Exception as e:
+        yield f"Error: {str(e)}"
+
+
+
 @app.post("/chat/stream")
 async def chat_stream(request: ChatRequest):
     """
@@ -96,6 +119,24 @@ async def chat_stream(request: ChatRequest):
         media_type="text/event-stream"
     )
 
+
+@app.post("/chat/agentstream")
+async def chat_stream(request: ChatRequest):
+    """
+    Endpoint that streams GPT responses
+    """
+    async def event_generator():
+        async for chunk in stream_agent_response(
+            request.message,
+            request.model,
+            request.temperature
+        ):
+            yield chunk
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream"
+    )
 # # Example regular endpoint for comparison
 # @app.post("/chat")
 # async def chat_regular(request: ChatRequest):

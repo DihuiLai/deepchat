@@ -109,7 +109,7 @@ app.post('/call_llm', upload.single('file'), async (req, res) => {
     try {
         const fastApiResponse = await axios({
             method: 'post',
-            url: 'http://localhost:8000/chat/stream',
+            url: 'http://localhost:8000/chat/agentstream',
             data: {
                 message: message,
                 model: 'gpt-3.5-turbo',
