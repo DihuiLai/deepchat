@@ -27,11 +27,12 @@ build/
 # Uncomment if needed
 # package-lock.json
 # yarn.lock
+__pycache__/
 
 # OS-specific files
 .DS_Store
 Thumbs.db
-
+*.pyc
 # Editor-specific files
 .vscode/
 .idea/
